@@ -1,15 +1,20 @@
 package br.com.minispring.framework.context;
 
 import br.com.minispring.framework.annotation.Component;
+
 import java.lang.reflect.Modifier;
 import java.net.JarURLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.zip.ZipEntry;
 
-/** Descobre classes sem instanciá-las. Funciona no diretório de classes e no JAR executável. */
+/**
+ * Descobre classes sem instanciá-las. Funciona no diretório de classes e no JAR executável.
+ */
 public final class ComponentScanner {
-    private ComponentScanner() {}
+    private ComponentScanner() {
+    }
 
     public static Set<Class<?>> scan(String basePackage) {
         // Pacotes Java usam pontos; entradas do classpath usam barras: a.b vira a/b.
@@ -27,16 +32,16 @@ public final class ComponentScanner {
                     Path root = Path.of(url.toURI());
                     try (var files = Files.walk(root)) {
                         files.filter(p -> p.toString().endsWith(".class")).forEach(p ->
-                            names.add(basePackage + "." + root.relativize(p).toString()
-                                .replace(java.io.File.separatorChar, '.').replaceAll("\\.class$", "")));
+                                names.add(basePackage + "." + root.relativize(p).toString()
+                                        .replace(java.io.File.separatorChar, '.').replaceAll("\\.class$", "")));
                     }
                 } else if (url.getProtocol().equals("jar")) {
                     var connection = (JarURLConnection) url.openConnection();
                     connection.setUseCaches(false);
                     try (var jar = connection.getJarFile()) {
-                        jar.stream().map(e -> e.getName())
-                            .filter(n -> n.startsWith(prefix + "/") && n.endsWith(".class"))
-                            .map(n -> n.substring(0, n.length() - 6).replace('/', '.')).forEach(names::add);
+                        jar.stream().map(ZipEntry::getName)
+                                .filter(n -> n.startsWith(prefix + "/") && n.endsWith(".class"))
+                                .map(n -> n.substring(0, n.length() - 6).replace('/', '.')).forEach(names::add);
                     }
                 } else {
                     throw new IllegalStateException("Protocolo de classpath não suportado: " + url);
@@ -62,6 +67,6 @@ public final class ComponentScanner {
     // Neste projeto reconhecemos apenas um nível dessa composição.
     private static boolean isComponent(Class<?> type) {
         return type.isAnnotationPresent(Component.class) || Arrays.stream(type.getAnnotations())
-            .anyMatch(a -> a.annotationType().isAnnotationPresent(Component.class));
+                .anyMatch(a -> a.annotationType().isAnnotationPresent(Component.class));
     }
 }

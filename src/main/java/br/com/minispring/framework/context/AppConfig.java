@@ -5,7 +5,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 
-/** Precedência: -Dpropriedade > VARIAVEL_AMBIENTE > application.properties. */
+/**
+ * Precedência: -Dpropriedade > VARIAVEL_AMBIENTE > application.properties.
+ */
 public final class AppConfig {
     private final Properties properties;
     private final Map<String, String> environment;
