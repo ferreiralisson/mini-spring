@@ -1,8 +1,8 @@
-# Mini Spring — um framework para abrir a caixa-preta
+# Mini Spring
 
-Projeto didático em **Java 21**, com **Jetty embutido**, sem Spring. O objetivo é acompanhar como uma classe anotada vira um objeto gerenciado e como uma requisição HTTP chega a um método Java e volta como JSON.
+Mini framework web em **Java 21**, com **Jetty embutido**, container de inversão de controle, injeção de dependências por construtor e roteamento por anotações.
 
-O domínio é um cadastro de cursos. As anotações e o container são nossos; Jetty cuida do HTTP/Servlet e Jackson faz a conversão JSON. Essa divisão deixa o foco na arquitetura do framework.
+Inclui uma API de cadastro de cursos como aplicação de exemplo. O projeto implementa suas próprias anotações e seu próprio container, sem dependência do Spring. Jetty recebe as requisições HTTP e Jackson realiza a serialização e desserialização JSON.
 
 ## Como rodar o projeto
 
@@ -68,7 +68,7 @@ Os testes HTTP iniciam seu próprio Jetty em uma porta livre; não é necessári
 ### Alterar a porta e o nome da aplicação
 
 ```sh
-java -Dserver.port=9090 -Dapp.name="Minha escola" -jar target/mini-spring-1.0.0.jar
+java -Dserver.port=9090 -Dapp.name="Minha aplicação" -jar target/mini-spring-1.0.0.jar
 ```
 
 Também é possível definir a porta por variável de ambiente em shells como Bash e Zsh:
@@ -125,11 +125,11 @@ curl -i -X POST http://127.0.0.1:8080/cursos \
 
 Também há exemplos prontos em [requests.http](requests.http), para clientes HTTP de IDE.
 
-## O que foi implementado
+## Recursos
 
-| Conceito | Onde observar | O que ensina |
+| Recurso | Implementação | Comportamento |
 |---|---|---|
-| Metadados e reflection | `framework/annotation`, `ComponentScanner` | Anotação sozinha não executa nada; alguém precisa interpretá-la |
+| Metadados e reflection | `framework/annotation`, `ComponentScanner` | Descoberta e interpretação de metadados em tempo de execução |
 | Inversão de controle | `ApplicationContext` | O framework decide quando e como construir os objetos |
 | Injeção por construtor | `CursoController` → `CursoService` → `CursoRepository` | Dependências explícitas, imutáveis e substituíveis |
 | Resolução por interface | `CursoRepository` / `InMemoryCursoRepository` | Uma abstração pode ser ligada a uma implementação na inicialização |
@@ -148,7 +148,7 @@ Também há exemplos prontos em [requests.http](requests.http), para clientes HT
 | Concorrência | `ConcurrentHashMap`, `AtomicLong` | Requisições diferentes usam os mesmos beans |
 | Testes | `src/test/java` | Testes de container, roteador e integração com Jetty real |
 
-Os nomes lembram o Spring, mas estas anotações são independentes e não são compatíveis com ele. `@Route` reúne o papel dos mapeamentos HTTP. `HttpResult` tem o papel didático de uma resposta explícita.
+Os nomes lembram o Spring, mas estas anotações são independentes e não são compatíveis com ele. `@Route` reúne o papel dos mapeamentos HTTP. `HttpResult` permite definir explicitamente status, headers e corpo da resposta.
 
 ## Caminho de uma requisição
 
@@ -180,7 +180,7 @@ sequenceDiagram
     J-->>C: HTTP 201 + JSON
 ```
 
-O Jetty interpreta HTTP e produz os objetos Servlet. Nosso código não implementa TCP nem o parser HTTP. O despacho usa a API Servlet síncrona sobre Jetty 12, conforme o [guia oficial de aplicações Servlet do Jetty](https://jetty.org/docs/jetty/12/programming-guide/server/http.html).
+O Jetty interpreta HTTP e produz os objetos Servlet. O framework delega o transporte e a interpretação do protocolo HTTP ao Jetty. O despacho usa a API Servlet síncrona sobre Jetty 12, conforme o [guia oficial de aplicações Servlet do Jetty](https://jetty.org/docs/jetty/12/programming-guide/server/http.html).
 
 ## Organização
 
@@ -214,12 +214,12 @@ src/main/java/br/com/minispring/
 
 Erros gerados pelo dispatcher têm `timestamp`, `status`, `message`, `path`, `details` e `requestId`. Erros rejeitados pelo próprio Jetty antes do Servlet podem ter outro formato. A validação automática se aplica aos parâmetros `@RequestBody`; uma chamada direta ao service não passa pelo pipeline HTTP.
 
-## Para usar em aula
+## Documentação
 
-Compartilhe com os alunos o [resumo de conceitos e materiais de apoio](docs/CONCEITOS-E-MATERIAIS-PARA-TURMA.md), com leituras essenciais, referências oficiais e perguntas de revisão. Esse conteúdo também está ao final do guia para Notion.
+Consulte o [guia de arquitetura](docs/ARQUITETURA.md) para conhecer a organização dos componentes, as decisões de implementação e os pontos de extensão.
 
-Para acompanhar a construção em sala, importe no Notion o [projeto passo a passo com o código completo](docs/NOTION-PROJETO-PASSO-A-PASSO.md). São 10 etapas em ordem de dependência, com arquivos completos, comentários, perguntas e pontos de verificação.
+## Escopo e limitações
 
-Siga [o roteiro de oito encontros](docs/ROTEIRO-DE-AULAS.md), com leitura de código, experimentos, exercícios e critérios de conclusão. O [guia de arquitetura](docs/ARQUITETURA.md) explica as decisões e limitações.
+O armazenamento da aplicação de exemplo é em memória. O projeto não inclui banco de dados, ORM, transações, autenticação, autorização, proxies AOP ou autoconfiguração condicional. As anotações são próprias e não oferecem compatibilidade com Spring.
 
-O projeto é pequeno de propósito: não tem banco, ORM, transações, segurança, proxies AOP, autoconfiguração condicional nem compatibilidade com Spring. Esses temas entram como extensões graduais. O endpoint `/health` confirma que a aplicação responde; não verifica dependências externas.
+O endpoint `/health` confirma que a aplicação responde; não verifica dependências externas. O servidor escuta em `127.0.0.1` por padrão.
