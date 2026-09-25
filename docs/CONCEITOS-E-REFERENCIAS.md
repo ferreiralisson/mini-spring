@@ -2,7 +2,7 @@
 
 Ao concluir o projeto, você deverá conseguir explicar como o framework cria objetos, conecta suas dependências e transforma uma requisição HTTP em uma chamada Java e uma resposta JSON.
 
-Os materiais abaixo complementam o código desenvolvido em sala. Os links foram consultados em 17/09/2026. Comece pelas leituras essenciais; use as referências mais extensas para aprofundar um assunto por vez.
+Os materiais abaixo complementam a implementação deste projeto. Os links foram consultados em 17/09/2026. Comece pelas leituras essenciais; use as referências mais extensas para aprofundar um assunto por vez.
 
 ## Conceitos apresentados e onde encontrá-los
 
@@ -113,17 +113,4 @@ Todas as referências desta seção estão em inglês. Não é necessário lê-l
 
 ## O que fica para estudos futuros
 
-AOP com proxies, transações, banco de dados, ORM, autenticação/autorização, outros escopos, autoconfiguração condicional e callbacks de lifecycle dos beans não foram implementados. O Validator é próprio e não é uma implementação de Jakarta Bean Validation. Use essas diferenças para delimitar o que o mini framework ensina e o que um framework completo acrescenta.
-
-## Revisão para entregar à turma
-
-1. Explique quem cria `CursoController`, `CursoService` e `InMemoryCursoRepository`.
-2. Mostre como o container descobre uma implementação de `CursoRepository`.
-3. Descreva o resultado de registrar duas implementações dessa interface.
-4. Explique por que uma anotação precisa de retenção em runtime para ser lida pelo nosso framework.
-5. Desenhe o fluxo completo de `POST /cursos`, incluindo JSON, validação, status e headers.
-6. Diferencie rota inexistente (404) de verbo não permitido (405).
-7. Mostre por que guardar o DTO atual em um campo do controller causaria risco de concorrência.
-8. Explique por que o teste de singleton usa `assertSame`, e não apenas `assertEquals`.
-9. Identifique uma simplificação do projeto e proponha uma evolução com um teste que demonstre seu funcionamento.
-10. Implemente o cadastro de alunos sem alterar as classes centrais do framework.
+AOP com proxies, transações, banco de dados, ORM, autenticação/autorização, outros escopos, autoconfiguração condicional e callbacks de lifecycle dos beans não foram implementados. O Validator é próprio e não é uma implementação de Jakarta Bean Validation. Essas diferenças delimitam os recursos deste projeto em relação a um framework completo.

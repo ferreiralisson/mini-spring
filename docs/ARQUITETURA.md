@@ -52,7 +52,7 @@ Uma barra final é ignorada. Não há curingas, negociação de conteúdo, versi
 
 O controller descreve a interface HTTP. O service normaliza o nome e aplica a regra de no máximo 2000 horas. O repository armazena cursos e gera IDs. `CursoInput` impede que o cliente determine o ID de criação.
 
-Para manter o exemplo enxuto, o service usa `HttpException`, acoplando a aplicação ao contrato HTTP do mini framework. Uma evolução é lançar exceções de domínio (`CursoNaoEncontrado`, `CargaHorariaExcedida`) e registrar mapeadores de exceção na camada web. Essa mudança merece uma aula sobre limites arquiteturais.
+Para manter o exemplo enxuto, o service usa `HttpException`, acoplando a aplicação ao contrato HTTP do mini framework. Uma evolução é lançar exceções de domínio (`CursoNaoEncontrado`, `CargaHorariaExcedida`) e registrar mapeadores de exceção na camada web. Essa mudança separa as regras de domínio dos detalhes do transporte HTTP.
 
 Não há transação: `ConcurrentHashMap` torna operações individuais seguras; não torna uma sequência de operações em vários registros atômica. O `computeIfPresent` evita recriar um curso removido durante uma atualização concorrente. A listagem não promete um snapshot transacional.
 

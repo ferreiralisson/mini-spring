@@ -27,7 +27,7 @@ public final class Validator {
                 throw new IllegalStateException("Não foi possível validar " + component.getName(), e);
             }
         }
-        // Acumular erros permite ao aluno/cliente corrigir vários campos na mesma tentativa.
+        // Acumular erros permite ao cliente corrigir vários campos na mesma tentativa.
         if (!errors.isEmpty()) throw new HttpException(400, "Falha de validação", errors);
     }
 }

@@ -216,7 +216,7 @@ Erros gerados pelo dispatcher têm `timestamp`, `status`, `message`, `path`, `de
 
 ## Documentação
 
-Consulte o [guia de arquitetura](docs/ARQUITETURA.md) para conhecer a organização dos componentes, as decisões de implementação e os pontos de extensão.
+Consulte o [guia de arquitetura](docs/ARQUITETURA.md) para conhecer a organização dos componentes, as decisões de implementação e os pontos de extensão. O documento de [conceitos e referências](docs/CONCEITOS-E-REFERENCIAS.md) reúne explicações e links para aprofundamento.
 
 ## Escopo e limitações
 
