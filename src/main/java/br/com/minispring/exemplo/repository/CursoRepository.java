@@ -4,6 +4,7 @@ import br.com.minispring.exemplo.model.Curso;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 /**
  * A aplicação depende de uma abstração; o container encontra a implementação.
@@ -18,6 +19,8 @@ public interface CursoRepository {
     Optional<Curso> findById(long id);
 
     Optional<Curso> update(long id, String nome, int cargaHoraria);
+
+    Optional<Curso> patch(long id, UnaryOperator<Curso> update);
 
     boolean delete(long id);
 }

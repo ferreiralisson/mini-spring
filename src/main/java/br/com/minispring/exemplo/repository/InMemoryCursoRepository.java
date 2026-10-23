@@ -1,11 +1,12 @@
 package br.com.minispring.exemplo.repository;
 
-import br.com.minispring.framework.annotation.Repository;
 import br.com.minispring.exemplo.model.Curso;
+import org.springframework.stereotype.Repository;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.UnaryOperator;
 
 @Repository
 public final class InMemoryCursoRepository implements CursoRepository {
@@ -37,6 +38,10 @@ public final class InMemoryCursoRepository implements CursoRepository {
     // Essa garantia por operação não equivale a uma transação envolvendo vários cursos.
     public Optional<Curso> update(long id, String nome, int cargaHoraria) {
         return Optional.ofNullable(courses.computeIfPresent(id, (key, old) -> new Curso(id, nome, cargaHoraria)));
+    }
+
+    public Optional<Curso> patch(long id, UnaryOperator<Curso> update) {
+        return Optional.ofNullable(courses.computeIfPresent(id, (key, old) -> update.apply(old)));
     }
 
     public boolean delete(long id) {

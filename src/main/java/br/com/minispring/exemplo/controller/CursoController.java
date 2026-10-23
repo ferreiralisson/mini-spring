@@ -1,45 +1,63 @@
 package br.com.minispring.exemplo.controller;
 
-import br.com.minispring.framework.annotation.*;
-import br.com.minispring.framework.web.HttpResult;
 import br.com.minispring.exemplo.model.*;
 import br.com.minispring.exemplo.service.CursoService;
+import br.com.minispring.exemplo.web.ApiResponses;
+import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import tools.jackson.databind.JsonNode;
+
+import java.net.URI;
 import java.util.List;
 
-@RestController("/cursos")
+@RestController
+@RequestMapping("/cursos")
 public final class CursoController {
     private final CursoService service;
-    // DI por construtor: o container fornece o service. O controller não escolhe
-    // como construí-lo, e a dependência fica explícita para quem lê ou testa a classe.
+
     public CursoController(CursoService service) { this.service = service; }
 
-    // GET /cursos?nome=java. Sem query param, o default vazio lista todos os cursos.
-    // Retornamos objetos Java; o dispatcher usa Jackson para produzir JSON.
-    @Route(method = "GET")
-    public List<Curso> list(@RequestParam("nome") String nome) { return service.list(nome); }
-
-    // O "id" da anotação corresponde ao {id} da rota. O dispatcher converte texto em long.
-    @Route(method = "GET", path = "/{id}")
-    public Curso get(@PathVariable("id") long id) { return service.get(id); }
-
-    // Binding por requisição: input vem do JSON, não do container IoC.
-    // A validação das anotações do DTO já ocorreu quando este método começa.
-    @Route(method = "POST")
-    public HttpResult create(@RequestBody CursoInput input) {
-        Curso curso = service.create(input);
-        return HttpResult.created("/cursos/" + curso.id(), curso);
+    @GetMapping
+    public List<Curso> list(@RequestParam(defaultValue = "") String nome) {
+        return service.list(nome);
     }
 
-    // Uma mesma chamada combina dados da URL (identidade) e do corpo (novos valores).
-    @Route(method = "PUT", path = "/{id}")
-    public Curso update(@PathVariable("id") long id, @RequestBody CursoInput input) {
+    @GetMapping("/{id}")
+    public Curso get(@PathVariable long id) {
+        return service.get(id);
+    }
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Curso> create(@Valid @RequestBody CursoInput input) {
+        Curso curso = service.create(input);
+        return ResponseEntity.created(URI.create("/cursos/" + curso.id())).body(curso);
+    }
+
+    @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Curso update(@PathVariable long id, @Valid @RequestBody CursoInput input) {
         return service.update(id, input);
     }
 
-    // Não há representação para devolver após excluir; usamos explicitamente 204 sem corpo.
-    @Route(method = "DELETE", path = "/{id}")
-    public HttpResult delete(@PathVariable("id") long id) {
+    @PatchMapping(path = "/{id}", consumes = "application/merge-patch+json")
+    public Curso patch(@PathVariable long id, @RequestBody JsonNode body) {
+        return service.patch(id, CursoPatchInput.from(body));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable long id) {
         service.delete(id);
-        return HttpResult.noContent();
+        return ResponseEntity.noContent().build();
+    }
+
+    @RequestMapping(method = RequestMethod.OPTIONS)
+    public ResponseEntity<Void> options() {
+        return ApiResponses.options("GET, HEAD, OPTIONS, POST");
+    }
+
+    @RequestMapping(path = "/{id}", method = RequestMethod.OPTIONS)
+    public ResponseEntity<Void> optionsForCourse() {
+        return ApiResponses.options("DELETE, GET, HEAD, OPTIONS, PATCH, PUT");
     }
 }

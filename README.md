@@ -1,158 +1,107 @@
-# Mini Spring — um framework para abrir a caixa-preta
+# Cursos API com Spring Boot
 
-Projeto didático em **Java 21**, com **Jetty embutido**, sem Spring. O objetivo é acompanhar como uma classe anotada vira um objeto gerenciado e como uma requisição HTTP chega a um método Java e volta como JSON.
+API REST didática para um catálogo de cursos, implementada com **Java 21**, **Spring Boot 4.1.2**, **Spring MVC** e **Tomcat embutido**. O projeto usa o container, o roteamento, o binding, a serialização JSON e a validação fornecidos pelo Spring; os cursos são mantidos em memória e se perdem ao reiniciar a aplicação.
 
-O domínio é um cadastro de cursos. As anotações e o container são nossos; Jetty cuida do HTTP/Servlet e Jackson faz a conversão JSON. Essa divisão deixa o foco na arquitetura do framework.
+## Executar
 
-## Execute em poucos minutos
-
-Pré-requisitos: JDK 21 e Maven 3.9+. A primeira execução precisa de internet para baixar as dependências.
+Pré-requisitos: JDK 21 e Maven 3.9+. A primeira execução precisa baixar dependências.
 
 ```sh
 mvn clean verify
+mvn spring-boot:run
+```
+
+Ou execute o JAR empacotado:
+
+```sh
 java -jar target/mini-spring-1.0.0.jar
 ```
 
-A API fica em `http://127.0.0.1:8080`. Use Ctrl+C para encerrar. Os dados ficam na memória e são perdidos ao reiniciar.
-
-Outra porta:
+A API fica em `http://127.0.0.1:8080`. Outra porta:
 
 ```sh
-java -Dserver.port=9090 -jar target/mini-spring-1.0.0.jar
-# Ou:
-SERVER_PORT=9090 java -jar target/mini-spring-1.0.0.jar
+SERVER_PORT=9090 mvn spring-boot:run
+# Também é possível usar -Dserver.port=9090
 ```
 
-Configuração: propriedade da JVM (`-D`) > variável de ambiente > `src/main/resources/application.properties`. Para `app.name`, a variável correspondente é `APP_NAME`. Arquivo `.properties` usa o formato padrão de `java.util.Properties` (escapes Unicode para caracteres fora de ISO-8859-1).
+O Spring Boot carrega `application.properties`, variáveis de ambiente e propriedades da JVM usando seu mecanismo padrão de configuração.
 
-## Experimente a API
+## API
+
+A especificação completa OpenAPI 3.1 está em [openapi.yaml](openapi.yaml).
 
 ```sh
-# Identificação da aplicação e saúde
+# Informações e saúde
 curl -i http://127.0.0.1:8080/
 curl -i http://127.0.0.1:8080/health
 
-# Criar: 201, header Location e JSON
-curl -i -X POST http://127.0.0.1:8080/cursos \
+# Criar: 201, Location e representação JSON
+curl -i -X POST http://127.0.0.1:8080/api/v1/cursos \
   -H 'Content-Type: application/json' \
   -d '{"nome":"Java básico","cargaHoraria":40}'
 
-# Listar, filtrar e consultar (use o ID devolvido no POST)
-curl -i http://127.0.0.1:8080/cursos
-curl -i 'http://127.0.0.1:8080/cursos?nome=java'
-curl -i http://127.0.0.1:8080/cursos/1
+# Listar a v1: página zero-based, tamanho padrão 20 (máximo 100)
+curl -i 'http://127.0.0.1:8080/api/v1/cursos?page=0&size=20&sort=nome,asc&nome=java'
 
-# Atualizar: 200
-curl -i -X PUT http://127.0.0.1:8080/cursos/1 \
+# Consultar e substituir todos os campos editáveis
+curl -i http://127.0.0.1:8080/api/v1/cursos/1
+curl -i -X PUT http://127.0.0.1:8080/api/v1/cursos/1 \
   -H 'Content-Type: application/json' \
   -d '{"nome":"Java avançado","cargaHoraria":80}'
 
-# Excluir: 204, sem corpo
-curl -i -X DELETE http://127.0.0.1:8080/cursos/1
+# Atualizar parcialmente: campos omitidos permanecem inalterados
+curl -i -X PATCH http://127.0.0.1:8080/api/v1/cursos/1 \
+  -H 'Content-Type: application/merge-patch+json' \
+  -d '{"nome":"Java avançado"}'
 
-# Provocar validação: 400
-curl -i -X POST http://127.0.0.1:8080/cursos \
-  -H 'Content-Type: application/json' \
-  -d '{"nome":" ","cargaHoraria":0}'
+# HEAD não envia corpo; OPTIONS informa Allow
+curl -I http://127.0.0.1:8080/api/v1/cursos/1
+curl -i -X OPTIONS http://127.0.0.1:8080/api/v1/cursos/1
+
+# Excluir: 204 sem corpo
+curl -i -X DELETE http://127.0.0.1:8080/api/v1/cursos/1
 ```
 
-Também há exemplos prontos em [requests.http](requests.http), para clientes HTTP de IDE.
+`/api/v1/cursos` é a rota canônica. Os caminhos `/cursos` e `/cursos/{id}` permanecem como aliases: a listagem legada mantém resposta em forma de array; a v1 devolve `items`, `page`, `size`, `totalElements` e `totalPages`.
 
-## O que foi implementado
+PATCH usa JSON Merge Patch (RFC 7396). Campos ausentes são preservados; `null`, campos desconhecidos e valores inválidos são rejeitados. O Curso resultante é validado antes da atualização atômica. PUT continua sendo substituição completa.
 
-| Conceito | Onde observar | O que ensina |
-|---|---|---|
-| Metadados e reflection | `framework/annotation`, `ComponentScanner` | Anotação sozinha não executa nada; alguém precisa interpretá-la |
-| Inversão de controle | `ApplicationContext` | O framework decide quando e como construir os objetos |
-| Injeção por construtor | `CursoController` → `CursoService` → `CursoRepository` | Dependências explícitas, imutáveis e substituíveis |
-| Resolução por interface | `CursoRepository` / `InMemoryCursoRepository` | Uma abstração pode ser ligada a uma implementação na inicialização |
-| Escopo singleton | `ApplicationContext.singletons` | Uma instância por container, compartilhada entre requisições |
-| Fail fast | `ApplicationContext`, `Router` | Ciclos, ambiguidades, dependências ausentes e rotas duplicadas falham antes de abrir a porta |
-| Bootstrap e ciclo de vida | `MiniApplication` | Ordenação da inicialização e encerramento do servidor |
-| Servidor e Servlet | Jetty / `DispatcherServlet` | Separação entre transporte HTTP e despacho para código de aplicação |
-| Front Controller | `DispatcherServlet.service` | Um ponto central coordena todas as requisições |
-| Roteamento | `Router` e `@Route` | Método HTTP + caminho selecionam um método Java |
-| Binding | `@PathVariable`, `@RequestParam`, `@RequestBody` | Texto da rede é convertido em argumentos tipados |
-| Serialização e DTO | Jackson e `CursoInput` | JSON de entrada não precisa ter a estrutura da entidade |
-| Validação | `Validator`, `@NotBlank`, `@Positive` | Validação estrutural antes de executar regras de negócio |
-| Erros HTTP | `HttpException`, `HttpResult` | Status, headers e corpo têm funções distintas |
-| Interceptadores | `LoggingInterceptor` | Comportamento transversal sem repetição nos controllers |
-| Observabilidade | `X-Request-Id`, logs de duração | Relacionar resposta, erro e linha de log |
-| Concorrência | `ConcurrentHashMap`, `AtomicLong` | Requisições diferentes usam os mesmos beans |
-| Testes | `src/test/java` | Testes de container, roteador e integração com Jetty real |
+Na listagem v1, `page` começa em 0; `size` tem padrão 20 e máximo 100; `sort` aceita `id`, `nome` ou `cargaHoraria` com direção `asc`/`desc`. O padrão é `id,asc`, com ID como desempate. O filtro `nome` é aplicado antes da paginação. Parâmetros inválidos retornam 400; páginas sem itens retornam 200 com metadados.
 
-Os nomes lembram o Spring, mas estas anotações são independentes e não são compatíveis com ele. `@Route` reúne o papel dos mapeamentos HTTP. `HttpResult` tem o papel didático de uma resposta explícita.
+Também há exemplos executáveis em [requests.http](requests.http).
 
-## Caminho de uma requisição
-
-```mermaid
-sequenceDiagram
-    participant C as Cliente
-    participant J as Jetty
-    participant D as DispatcherServlet
-    participant R as Router
-    participant A as CursoController
-    participant S as CursoService
-    participant P as CursoRepository
-    C->>J: POST /cursos + JSON
-    J->>D: HttpServletRequest / HttpServletResponse
-    D->>D: Interceptor before: ID e início
-    D->>R: Resolver método e caminho
-    R-->>D: Controller + Method + variáveis
-    D->>D: Jackson: JSON → CursoInput
-    D->>D: Validator: validar DTO
-    D->>A: Invocação por reflection
-    A->>S: create(input)
-    S->>P: create(nome, cargaHoraria)
-    P-->>S: Curso
-    S-->>A: Curso
-    A-->>D: HttpResult(201, curso, Location)
-    D->>D: Jackson: Curso → JSON
-    D->>D: Interceptor after: status e duração
-    D-->>J: Status, headers e bytes
-    J-->>C: HTTP 201 + JSON
-```
-
-O Jetty interpreta HTTP e produz os objetos Servlet. Nosso código não implementa TCP nem o parser HTTP. O despacho usa a API Servlet síncrona sobre Jetty 12, conforme o [guia oficial de aplicações Servlet do Jetty](https://jetty.org/docs/jetty/12/programming-guide/server/http.html).
-
-## Organização
+## Organização do código
 
 ```text
-src/main/java/br/com/minispring/
-├── framework/
-│   ├── annotation/       Metadados consumidos pelo framework
-│   ├── context/          Configuração, descoberta e container IoC
-│   ├── validation/       Validação de records
-│   ├── web/              Rotas, binding, respostas e interceptadores
-│   └── MiniApplication.java
-└── exemplo/
-    ├── Application.java  Ponto de entrada
-    ├── controller/       Contrato HTTP
-    ├── service/          Regras de negócio
-    ├── repository/       Interface e armazenamento em memória
-    └── model/            Record de domínio e DTO de entrada
+src/main/java/br/com/minispring/exemplo/
+├── Application.java       Inicialização Spring Boot
+├── controller/            Endpoints Spring MVC e versão da API
+├── model/                 Curso, DTOs e página de resposta
+├── repository/            Interface e implementação em memória
+├── service/               Regras de aplicação e domínio
+└── web/                   Erros da API e filtro de request-id/limite do corpo
 ```
 
-## Contrato de erros
+O Spring Boot fornece IoC/DI, Spring MVC, binding HTTP, conversão JSON, validação Jakarta e servidor Tomcat. O código específico da aplicação mantém as regras do catálogo, o contrato de erro JSON, o `X-Request-Id` e o limite de 1 MiB para corpos de escrita.
+
+## Erros HTTP
 
 | Status | Situação |
 |---|---|
-| 400 | JSON inválido, campo desconhecido, DTO inválido ou ID não numérico |
+| 400 | JSON, parâmetros ou validação inválidos |
 | 404 | Rota ou curso inexistente |
-| 405 | Caminho existente com método não suportado; inclui `Allow` |
-| 413 | Corpo de `@RequestBody` maior que 1 MiB |
-| 415 | `@RequestBody` sem `Content-Type: application/json` |
-| 422 | Regra de negócio: carga horária acima de 2000 horas |
-| 500 | Falha inesperada; detalhes técnicos ficam no log |
+| 405 | Método não permitido; inclui `Allow` |
+| 413 | Corpo maior que 1 MiB |
+| 415 | Tipo de mídia incompatível |
+| 422 | Carga horária acima de 2000 horas |
+| 500 | Falha inesperada; detalhes ficam no log |
 
-Erros gerados pelo dispatcher têm `timestamp`, `status`, `message`, `path`, `details` e `requestId`. Erros rejeitados pelo próprio Jetty antes do Servlet podem ter outro formato. A validação automática se aplica aos parâmetros `@RequestBody`; uma chamada direta ao service não passa pelo pipeline HTTP.
+As respostas de erro da aplicação têm `timestamp`, `status`, `message`, `path`, `details` e `requestId`. `X-Request-Id` é retornado em todas as respostas processadas pela aplicação. O endpoint `/health` indica que a aplicação responde; não verifica dependências externas.
 
-## Para usar em aula
+## Testes
 
-Compartilhe com os alunos o [resumo de conceitos e materiais de apoio](docs/CONCEITOS-E-MATERIAIS-PARA-TURMA.md), com leituras essenciais, referências oficiais e perguntas de revisão. Esse conteúdo também está ao final do guia para Notion.
+```sh
+mvn test
+```
 
-Para acompanhar a construção em sala, importe no Notion o [projeto passo a passo com o código completo](docs/NOTION-PROJETO-PASSO-A-PASSO.md). São 10 etapas em ordem de dependência, com arquivos completos, comentários, perguntas e pontos de verificação.
-
-Siga [o roteiro de oito encontros](docs/ROTEIRO-DE-AULAS.md), com leitura de código, experimentos, exercícios e critérios de conclusão. O [guia de arquitetura](docs/ARQUITETURA.md) explica as decisões e limitações.
-
-O projeto é pequeno de propósito: não tem banco, ORM, transações, segurança, proxies AOP, autoconfiguração condicional nem compatibilidade com Spring. Esses temas entram como extensões graduais. O endpoint `/health` confirma que a aplicação responde; não verifica dependências externas.
+A suíte sobe Spring Boot e Tomcat em porta aleatória e testa os contratos HTTP reais, incluindo CRUD, validação, PATCH, paginação, erros, métodos HEAD/OPTIONS e concorrência.

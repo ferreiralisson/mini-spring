@@ -15,6 +15,9 @@ Content-Type: application/json
 ### Listar
 GET {{baseUrl}}/cursos
 
+### Listar v1 com paginação e ordenação
+GET {{baseUrl}}/api/v1/cursos?page=0&size=20&sort=nome,asc
+
 ### Filtrar
 GET {{baseUrl}}/cursos?nome=java
 
@@ -26,6 +29,18 @@ PUT {{baseUrl}}/cursos/1
 Content-Type: application/json
 
 {"nome":"Java avançado","cargaHoraria":80}
+
+### Atualizar parcialmente
+PATCH {{baseUrl}}/cursos/1
+Content-Type: application/merge-patch+json
+
+{"nome":"Java avançado"}
+
+### Consultar headers sem corpo
+HEAD {{baseUrl}}/api/v1/cursos/1
+
+### Métodos permitidos
+OPTIONS {{baseUrl}}/api/v1/cursos/1
 
 ### Validação estrutural: 400
 POST {{baseUrl}}/cursos
@@ -52,7 +67,7 @@ Content-Type: text/plain
 texto
 
 ### Método não permitido: 405
-PATCH {{baseUrl}}/cursos/1
+POST {{baseUrl}}/cursos/1
 
 ### Excluir
 DELETE {{baseUrl}}/cursos/1

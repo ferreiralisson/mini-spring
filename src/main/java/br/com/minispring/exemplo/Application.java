@@ -1,13 +1,11 @@
 package br.com.minispring.exemplo;
 
-import br.com.minispring.framework.MiniApplication;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-public final class Application {
-    public static void main(String[] args) throws Exception {
-        // A aplicação entrega o controle ao framework. Não precisamos criar controllers
-        // e services manualmente. AutoCloseable permite encerrar o Jetty ao sair deste bloco.
-        try (var app = MiniApplication.run(Application.class)) {
-            app.await();
-        }
+@SpringBootApplication
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
     }
 }

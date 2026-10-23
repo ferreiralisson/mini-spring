@@ -1,0 +1,427 @@
+openapi: 3.1.0
+info:
+  title: Cursos API com Spring Boot
+  version: 1.0.0
+  description: >-
+    API didática de catálogo de cursos implementada com Spring Boot;
+    os dados são mantidos em memória.
+    Erros de rota são 404, métodos não permitidos são 405 e falhas inesperadas
+    são 500; erros tratados pela aplicação usam o schema Error.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /:
+    get:
+      summary: Informações da aplicação
+      responses:
+        "200":
+          description: Informações da aplicação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  application: { type: string }
+                  framework: { type: string, example: Spring Boot }
+                  server: { type: string, example: Tomcat }
+                required: [application, framework, server]
+        default: { $ref: "#/components/responses/Error" }
+    head:
+      summary: Retorna os headers de informações sem corpo
+      responses:
+        "200": { $ref: "#/components/responses/Head" }
+        default: { $ref: "#/components/responses/HeadError" }
+    options:
+      summary: Informa os métodos disponíveis
+      responses:
+        "204":
+          description: Métodos disponíveis
+          headers:
+            Allow:
+              schema: { type: string, example: "GET, HEAD, OPTIONS" }
+        default: { $ref: "#/components/responses/Error" }
+  /health:
+    get:
+      summary: Verifica se a aplicação responde
+      responses:
+        "200":
+          description: Estado do serviço
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { const: UP }
+                required: [status]
+        default: { $ref: "#/components/responses/Error" }
+    head:
+      summary: Retorna os headers de saúde sem corpo
+      responses:
+        "200": { $ref: "#/components/responses/Head" }
+        default: { $ref: "#/components/responses/HeadError" }
+    options:
+      summary: Informa os métodos disponíveis
+      responses:
+        "204":
+          description: Métodos disponíveis
+          headers:
+            Allow:
+              schema: { type: string, example: "GET, HEAD, OPTIONS" }
+        default: { $ref: "#/components/responses/Error" }
+  /cursos:
+    get:
+      summary: Lista cursos legados
+      parameters:
+        - $ref: "#/components/parameters/Nome"
+      responses:
+        "200":
+          description: Lista de cursos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Curso" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      summary: Cria um curso pelo alias legado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CursoInput" }
+      responses:
+        "201":
+          description: Curso criado
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "413": { $ref: "#/components/responses/TooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        default: { $ref: "#/components/responses/Error" }
+    head:
+      summary: Retorna os headers da listagem legada sem corpo
+      responses:
+        "200": { $ref: "#/components/responses/Head" }
+        default: { $ref: "#/components/responses/HeadError" }
+    options:
+      summary: Informa os métodos disponíveis na coleção legada
+      responses:
+        "204":
+          description: Métodos disponíveis
+          headers:
+            Allow:
+              schema: { type: string, example: "GET, HEAD, OPTIONS, POST" }
+        default: { $ref: "#/components/responses/Error" }
+  /cursos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    get:
+      summary: Consulta um curso pelo alias legado
+      responses:
+        "200":
+          description: Curso encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      summary: Substitui os campos editáveis de um curso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CursoInput" }
+      responses:
+        "200":
+          description: Curso atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413": { $ref: "#/components/responses/TooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      summary: Atualiza parcialmente um curso pelo alias legado
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: { $ref: "#/components/schemas/CursoMergePatch" }
+      responses:
+        "200":
+          description: Curso atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413": { $ref: "#/components/responses/TooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Exclui um curso pelo alias legado
+      responses:
+        "204": { description: Curso excluído }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    head:
+      summary: Retorna os headers do curso sem corpo
+      responses:
+        "200": { $ref: "#/components/responses/Head" }
+        "404": { $ref: "#/components/responses/HeadError" }
+        default: { $ref: "#/components/responses/HeadError" }
+    options:
+      summary: Informa os métodos disponíveis para o curso
+      responses:
+        "204":
+          description: Métodos disponíveis
+          headers:
+            Allow:
+              schema: { type: string, example: "DELETE, GET, HEAD, OPTIONS, PATCH, PUT" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/cursos:
+    get:
+      summary: Lista cursos paginados
+      parameters:
+        - $ref: "#/components/parameters/Nome"
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: sort
+          in: query
+          schema:
+            type: string
+            pattern: "^(id|nome|cargaHoraria),(asc|desc)$"
+            default: id,asc
+      responses:
+        "200":
+          description: Página de cursos filtrados e ordenados
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CursoPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      summary: Cria um curso na API v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CursoInput" }
+      responses:
+        "201":
+          description: Curso criado
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "413": { $ref: "#/components/responses/TooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        default: { $ref: "#/components/responses/Error" }
+    head:
+      summary: Retorna os headers da página sem corpo
+      responses:
+        "200": { $ref: "#/components/responses/Head" }
+        default: { $ref: "#/components/responses/HeadError" }
+    options:
+      summary: Informa os métodos disponíveis na coleção v1
+      responses:
+        "204":
+          description: Métodos disponíveis
+          headers:
+            Allow:
+              schema: { type: string, example: "GET, HEAD, OPTIONS, POST" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/cursos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    get:
+      summary: Consulta um curso na API v1
+      responses:
+        "200":
+          description: Curso encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      summary: Substitui os campos editáveis de um curso na API v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CursoInput" }
+      responses:
+        "200":
+          description: Curso atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413": { $ref: "#/components/responses/TooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      summary: Atualiza parcialmente um curso na API v1
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: { $ref: "#/components/schemas/CursoMergePatch" }
+      responses:
+        "200":
+          description: Curso atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413": { $ref: "#/components/responses/TooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Exclui um curso na API v1
+      responses:
+        "204": { description: Curso excluído }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    head:
+      summary: Retorna os headers do curso sem corpo
+      responses:
+        "200": { $ref: "#/components/responses/Head" }
+        "404": { $ref: "#/components/responses/HeadError" }
+        default: { $ref: "#/components/responses/HeadError" }
+    options:
+      summary: Informa os métodos disponíveis para o curso
+      responses:
+        "204":
+          description: Métodos disponíveis
+          headers:
+            Allow:
+              schema: { type: string, example: "DELETE, GET, HEAD, OPTIONS, PATCH, PUT" }
+        default: { $ref: "#/components/responses/Error" }
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    Nome:
+      name: nome
+      in: query
+      schema: { type: string, default: "" }
+  responses:
+    Error:
+      description: Erro no processamento da requisição
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    HeadError:
+      description: Resposta de erro correspondente ao GET, sem corpo
+    Head:
+      description: Mesmos status e headers da resposta GET correspondente, sem corpo
+      headers:
+        Content-Type:
+          schema: { type: string, example: application/json }
+        Content-Length:
+          schema: { type: integer, minimum: 0 }
+        X-Request-Id:
+          schema: { type: string, format: uuid }
+    NotFound:
+      description: Rota ou curso não encontrado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadRequest:
+      description: Entrada JSON, parâmetro ou validação inválida
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooLarge:
+      description: Corpo maior que 1 MiB
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnsupportedMediaType:
+      description: Tipo de mídia incompatível com a operação
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnprocessableEntity:
+      description: Regra de negócio violada
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Curso:
+      type: object
+      properties:
+        id: { type: integer, format: int64, minimum: 1 }
+        nome: { type: string, minLength: 1, pattern: ".*\\S.*" }
+        cargaHoraria: { type: integer, minimum: 1, maximum: 2000 }
+      required: [id, nome, cargaHoraria]
+      additionalProperties: false
+    CursoInput:
+      type: object
+      properties:
+        nome: { type: string, minLength: 1, pattern: ".*\\S.*" }
+        cargaHoraria: { type: integer, minimum: 1, maximum: 2000 }
+      required: [nome, cargaHoraria]
+      additionalProperties: false
+    CursoMergePatch:
+      type: object
+      description: Campos omitidos permanecem inalterados; null e campos desconhecidos são rejeitados.
+      properties:
+        nome: { type: string, minLength: 1, pattern: ".*\\S.*" }
+        cargaHoraria: { type: integer, minimum: 1, maximum: 2000 }
+      additionalProperties: false
+    CursoPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Curso" }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+      required: [items, page, size, totalElements, totalPages]
+      additionalProperties: false
+    Error:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        message: { type: string }
+        path: { type: string }
+        details:
+          type: array
+          items: { type: string }
+        requestId: { type: string, format: uuid }
+      required: [timestamp, status, message, path, details, requestId]
+      additionalProperties: false
