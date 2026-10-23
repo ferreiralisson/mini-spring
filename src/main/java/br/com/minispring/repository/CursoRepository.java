@@ -1,6 +1,6 @@
-package br.com.minispring.exemplo.repository;
+package br.com.minispring.repository;
 
-import br.com.minispring.exemplo.model.Curso;
+import br.com.minispring.model.Curso;
 
 import java.util.List;
 import java.util.Optional;

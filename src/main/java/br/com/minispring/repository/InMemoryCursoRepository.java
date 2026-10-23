@@ -1,11 +1,11 @@
-package br.com.minispring.exemplo.repository;
+package br.com.minispring.repository;
 
-import br.com.minispring.framework.annotation.Repository;
-import br.com.minispring.exemplo.model.Curso;
+import br.com.minispring.model.Curso;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.stereotype.Repository;
 
 @Repository
 public final class InMemoryCursoRepository implements CursoRepository {
