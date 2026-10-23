@@ -1,7 +1,7 @@
-package br.com.minispring.model;
+package br.com.minispring.exemplo.model;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
+import br.com.minispring.framework.validation.NotBlank;
+import br.com.minispring.framework.validation.Positive;
 
 /** DTO de entrada separado do modelo: o cliente não escolhe o ID. */
 // O DTO define o contrato de entrada e não possui id. As anotações são metadados:

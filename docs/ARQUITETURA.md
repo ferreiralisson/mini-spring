@@ -1,53 +1,69 @@
-# Arquitetura
+# Decisões de arquitetura
 
-## Inicialização e dependências
+## 1. IoC é quem controla; DI é como a dependência chega
 
-`Application` é a classe `@SpringBootApplication` que inicia o contexto do Spring. A busca de componentes parte de `br.com.minispring`, cobrindo controllers, serviços, repositório e componentes web. A injeção de dependências por construtor mantém as dependências explícitas; o repositório em memória é um bean Spring singleton e usa estruturas seguras para acesso concorrente.
+Sem o container, o ponto de entrada poderia construir tudo assim:
 
-Spring Boot configura Spring MVC, Jackson, Jakarta Validation e o Tomcat embutido. Porta, endereço e nome da aplicação são configuráveis por `application.properties` e pelos mecanismos de configuração padrão do Spring Boot.
-
-## Fluxo HTTP
-
-```mermaid
-sequenceDiagram
-    participant C as Cliente
-    participant T as Tomcat
-    participant F as RequestIdFilter
-    participant M as Spring MVC
-    participant V as Jakarta Validation
-    participant A as CursoController
-    participant S as CursoService
-    participant R as CursoRepository
-    C->>T: POST /cursos + JSON
-    T->>F: Requisição HTTP
-    F->>F: Gerar X-Request-Id
-    F->>M: Continuar filtro
-    M->>V: Validar @Valid CursoInput
-    V-->>M: Entrada validada
-    M->>A: Binding e invocação do endpoint
-    A->>S: create(input)
-    S->>R: create(nome, cargaHoraria)
-    R-->>S: Curso
-    S-->>A: Curso
-    A-->>M: ResponseEntity (201 + Location)
-    M-->>T: JSON serializado
-    T-->>C: HTTP 201 + JSON + X-Request-Id
+```java
+var repository = new InMemoryCursoRepository();
+var service = new CursoService(repository);
+var controller = new CursoController(service);
 ```
 
-Spring MVC resolve caminhos, métodos, query params, variáveis de caminho, corpos JSON e serialização. `@Valid` ativa as restrições Jakarta Validation no DTO de entrada. `ApiExceptionHandler` traduz erros de validação, binding, roteamento e negócio para um formato JSON comum; exceções inesperadas são registradas no log sem expor detalhes internos ao cliente.
+Isso já é injeção de dependência: o service recebe o repository de fora. O container automatiza esse trabalho e assume o controle da criação (IoC). A anotação não é a injeção; é um metadado usado para decidir quais classes registrar.
 
-`RequestIdFilter` gera um identificador por requisição, o devolve no header `X-Request-Id` e registra método, caminho, status e duração. O identificador também é incluído no corpo de erros.
+`ComponentScanner` encontra classes do pacote da aplicação e seus subpacotes. Ele reconhece `@Component` e anotações diretamente anotadas com `@Component`. Suporta diretórios de classes e JARs comuns; não suporta JARs aninhados, JPMS, carregadores especiais nem composição recursiva de anotações.
 
-## Camadas
+`ApplicationContext` mantém definições de classes e instâncias separadamente. Ao pedir um tipo, procura uma única classe atribuível a ele. Se necessário, resolve recursivamente os argumentos do único construtor público e guarda o resultado. A pilha `creating` revela ciclos como `A → B → A`. A inicialização antecipada detecta erros antes de iniciar o Jetty.
 
-- **Controller:** define o contrato HTTP: `GET /cursos` lista e filtra por nome, `GET /cursos/{id}` consulta, `POST /cursos` cria, `PUT /cursos/{id}` substitui, `PATCH /cursos/{id}` atualiza parcialmente e `DELETE /cursos/{id}` exclui. A criação retorna `201` com `Location`; exclusão retorna `204`.
-- **Service:** normaliza a busca por nome sem diferenciar maiúsculas de minúsculas, apara nomes e aplica a regra de duração total entre 1 e 2000 horas.
-- **Repository:** mantém os cursos em `ConcurrentHashMap`, cria IDs atômicos e ordena as listagens. Operações individuais são seguras para concorrência; não há transações.
-- **DTOs:** `CursoInput` impede que o cliente escolha o ID e declara validações de criação/substituição; `CursoPatch` representa campos parciais. No PATCH, campos omitidos e campos `null` não alteram o valor existente, e um objeto vazio é aceito sem efeito.
-- **Web:** `ApiExceptionHandler` formata erros segundo a RFC 9457; `RequestIdFilter` inclui `X-Request-Id`; `HttpCachingConfig` habilita ETag para GETs de `/cursos` e `/cursos/{id}`.
+Singleton significa uma instância por contexto. Não é o padrão de uma variável `static` global. Dois contextos podem ter duas instâncias da mesma classe.
 
-O armazenamento é intencionalmente volátil. O projeto não inclui banco de dados, autenticação ou autorização; a aplicação é configurada para escutar em `127.0.0.1`. `/health` apenas confirma que a aplicação responde, sem verificar dependências externas.
+## 2. Servidor embutido e Servlet
 
-## Testes
+`MiniApplication` cria um `Server` Jetty e um conector HTTP local. O `ServletContextHandler` registra nosso Servlet em `/*`. Não há necessidade de instalar um servidor separado ou produzir um WAR.
 
-`ApiIntegrationTest` inicia a aplicação em porta aleatória e exercita a API por HTTP. A suíte cobre CRUD, limites e validação, semântica do PATCH, erros estruturados, paginação, ETag/304, negociação de método HTTP e criação concorrente de IDs.
+O Jetty recebe conexões, interpreta HTTP e oferece `HttpServletRequest` / `HttpServletResponse`. Nosso `DispatcherServlet` resolve o restante: interceptação, rota, argumentos, validação, invocação e serialização. Jetty 12 também possui uma API de handlers própria; a opção Servlet torna explícita a ponte usada por frameworks MVC Servlet.
+
+O listener usa `127.0.0.1`. Para acesso de outros computadores, altere conscientemente o host no bootstrap. Os testes usam porta `0`, permitindo ao sistema operacional escolher uma porta livre.
+
+## 3. Binding não é DI
+
+O construtor de `CursoController` recebe um service durante a inicialização: isso é DI.
+
+O método `create` recebe um `CursoInput` a cada POST: isso é binding de dados HTTP. Esses argumentos vêm de lugares diferentes e possuem ciclos de vida diferentes.
+
+As variáveis de caminho e query params suportam `String`, `int` e `long`, incluindo wrappers. Um query param ausente usa `defaultValue`, que por padrão é uma string vazia. Para parâmetros numéricos opcionais, declare explicitamente um default numérico. Nomes não dependem do nome do parâmetro Java: a anotação deve fornecê-los.
+
+O JSON usa Jackson para tratar escapes, Unicode e tipos. O mapper rejeita campos desconhecidos, conteúdo extra após o documento, conversão de strings para números, valores nulos para primitivas e frações para inteiros. O framework limita a leitura do corpo a 1 MiB mais um byte para detectar excesso.
+
+A validação deste projeto é própria; não é Jakarta Bean Validation. Ela verifica `@NotBlank` e `@Positive` nos componentes do primeiro nível de records. Não percorre grafos ou coleções aninhadas e não valida métodos chamados fora do dispatcher.
+
+## 4. Roteamento e reflection
+
+As rotas são registradas uma vez. O caminho `/cursos/{id}` vira uma expressão regular; os grupos capturados alimentam os argumentos. Segmentos literais são escapados para não serem interpretados como expressões regulares.
+
+Rotas com mais segmentos literais têm prioridade; templates com a mesma forma e método são rejeitados mesmo que mudem o nome da variável. Empates entre outros templates são ordenados pelo texto do caminho. Isso é uma regra didática limitada, não um algoritmo completo de especificidade. Evite templates sobrepostos como `/{x}/detalhes` e `/cursos/{y}`.
+
+Uma barra final é ignorada. Não há curingas, negociação de conteúdo, versionamento de rotas ou HEAD/OPTIONS automáticos. Métodos sem mapeamento recebem 405 quando o caminho existe, com `Allow`, ou 404 quando não existe.
+
+`Method.invoke` encapsula exceções da aplicação em `InvocationTargetException`. Desencapsular a causa permite preservar um `HttpException` intencional; outros erros viram 500 e são registrados no servidor.
+
+## 5. Camadas e acoplamento
+
+O controller descreve a interface HTTP. O service normaliza o nome e aplica a regra de no máximo 2000 horas. O repository armazena cursos e gera IDs. `CursoInput` impede que o cliente determine o ID de criação.
+
+Para manter o exemplo enxuto, o service usa `HttpException`, acoplando a aplicação ao contrato HTTP do mini framework. Uma evolução é lançar exceções de domínio (`CursoNaoEncontrado`, `CargaHorariaExcedida`) e registrar mapeadores de exceção na camada web. Essa mudança merece uma aula sobre limites arquiteturais.
+
+Não há transação: `ConcurrentHashMap` torna operações individuais seguras; não torna uma sequência de operações em vários registros atômica. O `computeIfPresent` evita recriar um curso removido durante uma atualização concorrente. A listagem não promete um snapshot transacional.
+
+## 6. Interceptadores e observabilidade
+
+Interceptors executam `before` na ordem de registro e `after` na ordem inversa, para os que concluíram `before`. O logging guarda início e ID como atributos da requisição. Guardá-los em campos do interceptor misturaria requisições concorrentes, pois a instância é compartilhada.
+
+Os interceptadores são registrados explicitamente no bootstrap. Este projeto não os descobre por scanning nem implementa proxies AOP. O `after` mede o processamento no Servlet, não o recebimento completo pelo cliente. O header `X-Request-Id` liga a resposta ao log e ao corpo de erro.
+
+## 7. Ciclo de vida e extensões
+
+O bootstrap só abre a porta após montar o contexto e validar as rotas. O servidor pode ser encerrado com `close()` nos testes, e o hook do Jetty atende ao encerramento da JVM. Beans não possuem callbacks próprios de inicialização/destruição.
+
+Extensões possíveis, uma por vez: callbacks de lifecycle; `@Qualifier`; escopo prototype; mapeamento de exceções; filtros de autenticação; paginação; JDBC; transações; proxies por interface; testes de arquitetura. Adicione um cenário observável e um teste para cada extensão antes de expandir a abstração.
